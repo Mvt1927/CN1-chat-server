@@ -1,0 +1,157 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id Int @id @default(autoincrement())
+
+  username String @unique
+  hash     String
+
+  email     String  @unique
+  avatar    String?
+  firstName String?
+  lastName  String?
+  // peerId    String?
+  token     String?
+
+  stats String?
+
+  chatSend     Chat[]          @relation("userSend")
+  chatReceive  Chat[]          @relation("userReceive")
+  UserFirst    Friend[]        @relation("userFirst")
+  UserSecond   Friend[]        @relation("userSecond")
+  Groups       MemberOnGroup[]
+  CreatorGroup Group[]
+  GroupMessage GroupMessage[]
+
+  createAt DateTime @default(now())
+  updateAt DateTime @updatedAt
+
+  @@map("users")
+}
+
+model Chat {
+  id            Int    @id @unique @default(autoincrement())
+  type          String
+  userSendId    Int
+  userReceiveId Int
+
+  messageId Int? @unique
+
+  imageID Int?
+
+  stickerID Int?
+
+  callID Int?
+
+  status String?
+
+  userSend    User @relation("userSend", fields: [userSendId], references: [id], map: "userSend_fkey")
+  userReceive User @relation("userReceive", fields: [userReceiveId], references: [id], map: "userReceive_fkey")
+
+  messages Messages? @relation("messageId", fields: [messageId], references: [id], map: "messageId_fkey")
+
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+  updateAt  DateTime @updatedAt
+
+  @@map("chats")
+}
+
+model Messages {
+  id     Int     @id @unique @default(autoincrement())
+  value    String
+  status String?
+
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+  updateAt  DateTime @updatedAt
+
+  chat Chat? @relation("messageId")
+
+  @@map("messages")
+}
+
+model Friend {
+  id           Int @unique(map: "id_UNIQUE") @default(autoincrement())
+  userFirstId  Int
+  userSecondId Int
+
+  //STATUS
+  // 0 || NULL: DEFAULT - CANCEL - DELETE
+  // 1: PENDING
+  // 2: ACCEPT
+  status Int
+
+  UserFirst  User @relation("userFirst", fields: [userFirstId], references: [id], map: "userFirst_fkey")
+  UserSecond User @relation("userSecond", fields: [userSecondId], references: [id], map: "userSecond_fkey")
+
+  createAt DateTime @default(now()) @db.Timestamp(6)
+  updateAt DateTime @updatedAt
+
+  @@id([userFirstId, userSecondId])
+  @@map("friends")
+}
+
+model Group {
+  id              Int       @id @default(autoincrement())
+  creatorId       Int
+  title           String?
+  lastMessageSent String?
+  lastMessageAt   DateTime? @updatedAt
+  avatar          String?
+
+  status String?
+
+  creator  User            @relation(fields: [creatorId], references: [id])
+  messages GroupMessage[]
+  Users    MemberOnGroup[]
+
+  createAt DateTime @default(now()) @db.Timestamp(6)
+  updateAt DateTime @updatedAt
+
+  @@map("groups")
+}
+
+model MemberOnGroup {
+  groupId  Int
+  memberId Int
+
+  permision Json?
+
+  status String?
+
+  member User  @relation(fields: [memberId], references: [id])
+  group  Group @relation(fields: [groupId], references: [id])
+
+  createAt DateTime @default(now()) @db.Timestamp(6)
+  updateAt DateTime @updatedAt
+
+  @@id([groupId, memberId])
+  @@map("members")
+}
+
+model GroupMessage {
+  id      Int @default(autoincrement())
+  groupId Int
+
+  memberSendId Int
+  message      String
+
+  status String?
+
+  Group    Group? @relation(fields: [groupId], references: [id])
+  userSend User?  @relation(fields: [memberSendId], references: [id])
+
+  createAt DateTime @default(now())
+  updateAt DateTime @updatedAt
+
+  @@id([id, groupId])
+}
