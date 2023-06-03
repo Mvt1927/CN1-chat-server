@@ -8,6 +8,8 @@ import { GatewayModule } from './gateway/gateway.module';
 // import { FriendRequestModule } from './friend-request/friend-request.module';
 // import { GroupModule } from './group/group.module';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
 // import { UserModule } from './user/user.module';
 
 @Module({
@@ -25,5 +27,7 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
     // GroupModule,
     // UserModule,
   ],
+  controllers: [AppController],
+  providers: [AppService],
 })
 export class AppModule { }
