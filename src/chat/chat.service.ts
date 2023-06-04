@@ -35,12 +35,14 @@ export class ChatService {
                         select:{
                             id:true,
                             username:true,
+                            name:true
                         }
                     },
                     userSend: {
                         select:{
                             id:true,
                             username:true,
+                            name:true
                         }
                     }
                 }

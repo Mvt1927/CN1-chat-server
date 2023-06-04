@@ -16,12 +16,11 @@ model User {
   username String @unique
   hash     String
 
-  email     String  @unique
-  avatar    String?
-  firstName String?
-  lastName  String?
+  email  String  @unique
+  avatar String?
+  name   String?
   // peerId    String?
-  token     String?
+  token  String?
 
   stats String?
 
@@ -68,7 +67,7 @@ model Chat {
 
 model Messages {
   id     Int     @id @unique @default(autoincrement())
-  value    String
+  value  String
   status String?
 
   createdAt DateTime @default(now()) @db.Timestamp(6)

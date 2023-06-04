@@ -52,7 +52,7 @@ export class AuthService {
                 return false
             })
             if (isPasswordMatching) {
-                return await this.createTokenAndThrowException(user.id, user.username, HttpStatus.OK)
+                return await this.createTokenAndThrowException(user.id, user.username, user.name, HttpStatus.OK)
             }
         }
         throw new HttpException('Incorrect Username or Password', HttpStatus.UNAUTHORIZED);
@@ -84,16 +84,19 @@ export class AuthService {
         if (inputPayload.password === inputPayload.repassword) {
             const isHasUser = await this.prisma.user.findMany({
                 where: {
-                    OR: {
-                        username: inputPayload.username,
+                    OR: [{
                         email: inputPayload.email
+                    },
+                    {
+                        username: inputPayload.username
                     }
+                    ]
                 },
                 select: {
                     id: true
-                }
+                },
+
             }).then((value) => {
-                console.log(value.length);
 
                 return Boolean(value.length)
             }).catch(_ => {
@@ -107,14 +110,13 @@ export class AuthService {
                             username: inputPayload.username,
                             hash: hash,
                             email: inputPayload.email,
-                            firstName: inputPayload.firstName,
-                            lastName: inputPayload.lastName,
+                            name: inputPayload.name,
                         }
 
                     })
-                    return await this.createTokenAndThrowException(user.id, user.username, HttpStatus.CREATED)
+                    return await this.createTokenAndThrowException(user.id, user.username, user.name, HttpStatus.CREATED)
                 } catch (error) {
-                    throw new HttpException('Credientials taken - AuthService.109', HttpStatus.INTERNAL_SERVER_ERROR);
+                    throw new HttpException('Email has used', HttpStatus.BAD_REQUEST);
                 }
             } else throw new HttpException("User already exist", HttpStatus.BAD_REQUEST)
 
@@ -172,7 +174,7 @@ export class AuthService {
     async refreshToken(inputPayload: AuthRefreshToken): Promise<AuthSuccessReturn> {
         const checkToken = await this.checkToken(inputPayload.access_token)
         if (checkToken) {
-            return this.createTokenAndThrowException(checkToken.userId, checkToken.username, HttpStatus.OK, checkToken.token)
+            return this.createTokenAndThrowException(checkToken.id, checkToken.username, checkToken.name, HttpStatus.OK, checkToken.token)
         } else throw new HttpException("Token Error", HttpStatus.BAD_REQUEST)
     }
 
@@ -197,7 +199,7 @@ export class AuthService {
     async renewToken(inputPayload: AuthRefreshToken): Promise<AuthSuccessReturn> {
         const checkToken = await this.checkToken(inputPayload.access_token)
         if (checkToken) {
-            return this.createTokenAndThrowException(checkToken.userId, checkToken.username, HttpStatus.OK)
+            return this.createTokenAndThrowException(checkToken.id, checkToken.username, checkToken.name, HttpStatus.OK)
         } else throw new HttpException("Token Error", HttpStatus.BAD_REQUEST)
     }
 
@@ -224,10 +226,11 @@ export class AuthService {
         const tokenPayload = this.jwt.decode(access_token)
 
         const username = tokenPayload['username']
-        const userId = tokenPayload['userId']
+        const userId = tokenPayload['id']
+        const name = tokenPayload['name']
 
 
-        if (userId && username) {
+        if (userId && username && name) {
             const user = await this.prisma.user.findUnique({
                 where: {
                     username: username
@@ -235,7 +238,8 @@ export class AuthService {
                 select: {
                     id: true,
                     token: true,
-                    username: true
+                    username: true,
+                    name: true
                 }
             }).catch(_ => {
                 throw new HttpException("Token Error", HttpStatus.BAD_REQUEST)
@@ -244,9 +248,10 @@ export class AuthService {
                 const secret = this.config.get("JWT_SECRET") + user.token;
                 const checkTokenPayload = await this.jwt.verifyAsync(access_token, { secret }).then(_ => {
                     return {
-                        userId: user.id,
+                        id: user.id,
                         username: user.username,
-                        token: user.token
+                        token: user.token,
+                        name: user.name
                     }
                 }).catch(_ => {
                     throw new HttpException("Token Error", HttpStatus.BAD_REQUEST)
@@ -260,7 +265,7 @@ export class AuthService {
      * Xử lý tạo token 
      * 
      * 
-     * @param {number} userId - ID của user.
+     * @param {number} id - ID của user.
      * @param {string} username - Username của user.
      * @param {number} HttpStatusCode - Status code trả về.
      * @param {string} current_token - token dùng để tạo access_token, default `none`.
@@ -277,10 +282,11 @@ export class AuthService {
      * - `statusCode`: the Http Status Code.
      * - `message`: a short description of the HTTP error by default; override this
      */
-    private async createTokenAndThrowException(userId: number, username: string, HttpStatusCode: number, current_token?: string): Promise<AuthSuccessReturn> {
+    private async createTokenAndThrowException(id: number, username: string, name: string, HttpStatusCode: number, current_token?: string): Promise<AuthSuccessReturn> {
         const payload: AuthTokenPayload = {
-            id: userId,
-            username: username
+            id: id,
+            username: username,
+            name: name
         }
 
         // const token = current_token||crypto.randomUUID()
@@ -305,6 +311,8 @@ export class AuthService {
                     statusCode: HttpStatusCode,
                     message: "Authentication accepted",
                     username: username,
+                    id: id,
+                    name: name,
                     access_token: access_token,
                 }
             } catch (error) {
@@ -331,6 +339,7 @@ export class AuthService {
             select: {
                 id: true,
                 username: true,
+                name:true,
                 chatSend: {
                     take: 1,
                     orderBy: [
@@ -341,7 +350,25 @@ export class AuthService {
                             { userSendId: userId },
                             { userReceiveId: userId }
                         ]
+                    },
+                    include:{
+                        messages:true,
+                        userReceive: {
+                            select:{
+                                id:true,
+                                username:true,
+                                name:true
+                            }
+                        },
+                        userSend: {
+                            select:{
+                                id:true,
+                                username:true,
+                                name:true
+                            }
+                        }
                     }
+                    
                 },
                 chatReceive: {
                     take: 1,
@@ -353,6 +380,23 @@ export class AuthService {
                             { userSendId: userId },
                             { userReceiveId: userId }
                         ]
+                    },
+                    include:{
+                        messages:true,
+                        userReceive: {
+                            select:{
+                                id:true,
+                                username:true,
+                                name:true
+                            }
+                        },
+                        userSend: {
+                            select:{
+                                id:true,
+                                username:true,
+                                name:true
+                            }
+                        }
                     }
                 }
             }
@@ -368,7 +412,7 @@ export class AuthService {
                 if (user.chatSend[0]) {
                     user['chat'] = user.chatSend[0]
                 } else user['chat'] = {}
-            }else if (!user.chatSend[0]) {
+            } else if (!user.chatSend[0]) {
                 user['chat'] = user.chatReceive[0]
             }
 

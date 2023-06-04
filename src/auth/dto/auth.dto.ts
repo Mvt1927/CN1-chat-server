@@ -22,11 +22,8 @@ export class AuthSignUp extends AuthSignIn {
 
     @IsNotEmpty()
     @IsString()
-    firstName: string
-    
-    @IsNotEmpty()
-    @IsString()
-    lastName: string
+    name: string
+
 }
 
 export class AuthSignOut {
@@ -41,17 +38,21 @@ export class AuthRenewToken extends AuthSignOut{
 
 export class AuthSuccessReturn {
     statusCode: number
-    message: string
-    username: string | string[]
+    message: string| string[]
+    id: number
+    username: string 
+    name: string 
     access_token: string
 }
 
 export class AuthTokenPayload {
     id: number
     username: string
+    name: string
 }
 export class AuthCheckToken{
-    userId: number
+    id: number
     username: string
     token:string
+    name:string
 }
