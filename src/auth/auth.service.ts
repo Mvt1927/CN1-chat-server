@@ -339,7 +339,7 @@ export class AuthService {
             select: {
                 id: true,
                 username: true,
-                name:true,
+                name: true,
                 chatSend: {
                     take: 1,
                     orderBy: [
@@ -351,24 +351,24 @@ export class AuthService {
                             { userReceiveId: userId }
                         ]
                     },
-                    include:{
-                        messages:true,
+                    include: {
+                        messages: true,
                         userReceive: {
-                            select:{
-                                id:true,
-                                username:true,
-                                name:true
+                            select: {
+                                id: true,
+                                username: true,
+                                name: true
                             }
                         },
                         userSend: {
-                            select:{
-                                id:true,
-                                username:true,
-                                name:true
+                            select: {
+                                id: true,
+                                username: true,
+                                name: true
                             }
                         }
                     }
-                    
+
                 },
                 chatReceive: {
                     take: 1,
@@ -381,20 +381,20 @@ export class AuthService {
                             { userReceiveId: userId }
                         ]
                     },
-                    include:{
-                        messages:true,
+                    include: {
+                        messages: true,
                         userReceive: {
-                            select:{
-                                id:true,
-                                username:true,
-                                name:true
+                            select: {
+                                id: true,
+                                username: true,
+                                name: true
                             }
                         },
                         userSend: {
-                            select:{
-                                id:true,
-                                username:true,
-                                name:true
+                            select: {
+                                id: true,
+                                username: true,
+                                name: true
                             }
                         }
                     }
@@ -410,10 +410,10 @@ export class AuthService {
 
             if (!user.chatReceive[0]) {
                 if (user.chatSend[0]) {
-                    user['chat'] = user.chatSend[0]
-                } else user['chat'] = {}
+                    user['chat'] = user.chatSend
+                } else user['chat'] = []
             } else if (!user.chatSend[0]) {
-                user['chat'] = user.chatReceive[0]
+                user['chat'] = user.chatReceive
             }
 
 

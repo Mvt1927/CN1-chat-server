@@ -57,6 +57,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         const type = String(body.type)
         const msg = body.message;
         const receiverSocketId = this.sessions.getUserSocket(receiverId)?.user.socketId;
+        const senderSocketId = this.sessions.getUserSocket(senderId)?.user.socketId;
         try {
             const message = await this.prisma.messages.create({
                 data: {
@@ -64,33 +65,33 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
                 }
             })
             const chat = await this.prisma.chat.create({
-                data:{
-                    type:"text",
-                    messageId:message.id,
-                    userSendId:senderId,
-                    userReceiveId:receiverId
+                data: {
+                    type: "text",
+                    messageId: message.id,
+                    userSendId: senderId,
+                    userReceiveId: receiverId
                 },
-                include:{
-                    messages:true,
+                include: {
+                    messages: true,
                     userReceive: {
-                        select:{
-                            id:true,
-                            username:true,
+                        select: {
+                            id: true,
+                            username: true,
                         }
                     },
                     userSend: {
-                        select:{
-                            id:true,
-                            username:true,
+                        select: {
+                            id: true,
+                            username: true,
                         }
                     }
                 }
             })
-            if (receiverSocketId) {
-                this.server.to(String(receiverSocketId)).emit(Chat.RECEIVE_MESSAGE, {
-                    chat: chat
-                });
-            }
+
+            this.server.to([String(senderSocketId), String(receiverSocketId)]).emit(Chat.RECEIVE_MESSAGE, {
+                chat: chat
+            });
+
         } catch (error) {
             if (error instanceof PrismaClientKnownRequestError) {
                 if (error.code == 'P2002') {
