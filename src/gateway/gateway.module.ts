@@ -4,9 +4,13 @@ import { ChatGateway } from 'src/chat/gateway/chat.gateway';
 import { WebsocketAdapter } from './gateway.adapter';
 import { GatewaySessionManager } from './gateway.session';
 import { JwtService } from '@nestjs/jwt';
+import { PeerModule } from 'src/peer/peer.module';
 
 @Module({
-	imports: [WebsocketAdapter],
+	imports: [
+		WebsocketAdapter,
+		PeerModule
+	],
 	providers: [
 		ChatGateway,
 		JwtService,

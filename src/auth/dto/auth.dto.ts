@@ -1,3 +1,4 @@
+import { Images } from "@prisma/client";
 import { IsEmail, IsNotEmpty, IsString } from "class-validator"
 
 export class AuthSignIn {
@@ -29,20 +30,30 @@ export class AuthSignUp extends AuthSignIn {
 export class AuthSignOut {
     @IsNotEmpty()
     @IsString()
-    access_token:string
+    access_token: string
 }
-export class AuthRefreshToken extends AuthSignOut{
+export class AuthRefreshToken extends AuthSignOut {
 }
-export class AuthRenewToken extends AuthSignOut{
+export class AuthRenewToken extends AuthSignOut {
 }
 
 export class AuthSuccessReturn {
     statusCode: number
-    message: string| string[]
-    id: number
-    username: string 
-    name: string 
+    message: string | string[]
+    user: {
+        id: number
+        username: string
+        name: string
+        avatar: Images | null
+    }
     access_token: string
+}
+
+export class UserPayload {
+    id: number
+    username: string
+    name: string
+    avatar: Images | null
 }
 
 export class AuthTokenPayload {
@@ -50,9 +61,9 @@ export class AuthTokenPayload {
     username: string
     name: string
 }
-export class AuthCheckToken{
+export class AuthCheckToken {
     id: number
     username: string
-    token:string
-    name:string
+    token: string
+    name: string
 }

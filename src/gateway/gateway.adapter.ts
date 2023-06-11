@@ -1,5 +1,5 @@
 import { IoAdapter } from '@nestjs/platform-socket.io';
-import { AuthenticatedSocket, IPayload} from '../utils/interfaces';
+import { AuthenticatedSocket, IPayload } from '../utils/interfaces';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { Secret } from 'src/utils/constants';
@@ -11,8 +11,7 @@ export class WebsocketAdapter extends IoAdapter {
 	createIOServer(port: number, options?: any) {
 		const server = super.createIOServer(port, options);
 		server.use(async (socket: AuthenticatedSocket, next) => {
-			const token = socket.handshake.headers?.access_token;
-			// console.log(socket)
+			const token = socket.handshake.headers?.access_token ? socket.handshake.headers?.access_token : socket.handshake.auth?.access_token;
 			if (!token) {
 				console.log(`Client has no token`);
 				return next(new Error('Not Authenticated. No token were sent'));

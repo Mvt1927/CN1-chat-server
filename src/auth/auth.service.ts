@@ -2,8 +2,9 @@ import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { AuthCheckToken, AuthRefreshToken, AuthSignIn, AuthSignOut, AuthSignUp, AuthSuccessReturn, AuthTokenPayload } from './dto';
+import { AuthCheckToken, AuthRefreshToken, AuthSignIn, AuthSignOut, AuthSignUp, AuthSuccessReturn, AuthTokenPayload, UserPayload } from './dto';
 import * as argon from 'argon2'
+import { User } from '@prisma/client';
 
 @Injectable()
 export class AuthService {
@@ -44,7 +45,14 @@ export class AuthService {
         const user = await this.prisma.user.findUnique({
             where: {
                 username: inputPayload.username,
-            }
+            },
+            select: {
+                id: true,
+                name: true,
+                username: true,
+                avatar: true,
+                hash: true
+            },
         });
         if (user) {
             const isPasswordMatching = await argon.verify(user.hash, inputPayload.password).catch(e => {
@@ -52,7 +60,8 @@ export class AuthService {
                 return false
             })
             if (isPasswordMatching) {
-                return await this.createTokenAndThrowException(user.id, user.username, user.name, HttpStatus.OK)
+                delete user.hash
+                return await this.createTokenAndThrowException(user, HttpStatus.OK)
             }
         }
         throw new HttpException('Incorrect Username or Password', HttpStatus.UNAUTHORIZED);
@@ -111,10 +120,15 @@ export class AuthService {
                             hash: hash,
                             email: inputPayload.email,
                             name: inputPayload.name,
+                        },
+                        select: {
+                            id: true,
+                            username: true,
+                            name: true,
+                            avatar: true
                         }
-
                     })
-                    return await this.createTokenAndThrowException(user.id, user.username, user.name, HttpStatus.CREATED)
+                    return await this.createTokenAndThrowException(user, HttpStatus.CREATED)
                 } catch (error) {
                     throw new HttpException('Email has used', HttpStatus.BAD_REQUEST);
                 }
@@ -136,7 +150,7 @@ export class AuthService {
      * - `message`: a short description of the HTTP error by default; override this
      */
     async signout(inputPayload: AuthSignOut) {
-        const checkToken = await this.checkToken(inputPayload.access_token)
+        // const checkToken = await this.checkToken(inputPayload.access_token)
         // if (checkToken) {
         //     const token = crypto.randomUUID()
         //     await this.prisma.user.update({
@@ -153,122 +167,121 @@ export class AuthService {
         // }else throw new HttpException("Token Error", HttpStatus.BAD_REQUEST)
     }
 
-    /**
-     * Làm tươi token, token cũ còn hạn vẫn sử dụng được.
-     * 
-     * @param {AuthRefreshToken} inputPayload  - Giá trị nhận từ client là 1 `JSON` chứa 1 phần tử :
-     * - `access_token`: token đăng nhập.
-     * 
-     * @returns {Promise<AuthSuccessReturn>} Trả về `AuthSuccessReturn` hoặc throw `HttpException`
-     * 
-     * `AuthSuccessReturn` By default, the `JSON` response body contains four properties:
-     * - `statusCode`: the Http Status Code.
-     * - `message`: a short description of the request.
-     * - `username`: username của người dùng.
-     * - `access_token`: token sử dụng để đăng nhập thay tài khoản và mật khẩu.
-     * 
-     * `HttpException` By default, the `JSON` response body contains two properties:
-     * - `statusCode`: the Http Status Code.
-     * - `message`: a short description of the HTTP error by default; override this
-     */
-    async refreshToken(inputPayload: AuthRefreshToken): Promise<AuthSuccessReturn> {
-        const checkToken = await this.checkToken(inputPayload.access_token)
-        if (checkToken) {
-            return this.createTokenAndThrowException(checkToken.id, checkToken.username, checkToken.name, HttpStatus.OK, checkToken.token)
-        } else throw new HttpException("Token Error", HttpStatus.BAD_REQUEST)
-    }
+    // /**
+    //  * Làm tươi token, token cũ còn hạn vẫn sử dụng được.
+    //  * 
+    //  * @param {AuthRefreshToken} inputPayload  - Giá trị nhận từ client là 1 `JSON` chứa 1 phần tử :
+    //  * - `access_token`: token đăng nhập.
+    //  * 
+    //  * @returns {Promise<AuthSuccessReturn>} Trả về `AuthSuccessReturn` hoặc throw `HttpException`
+    //  * 
+    //  * `AuthSuccessReturn` By default, the `JSON` response body contains four properties:
+    //  * - `statusCode`: the Http Status Code.
+    //  * - `message`: a short description of the request.
+    //  * - `username`: username của người dùng.
+    //  * - `access_token`: token sử dụng để đăng nhập thay tài khoản và mật khẩu.
+    //  * 
+    //  * `HttpException` By default, the `JSON` response body contains two properties:
+    //  * - `statusCode`: the Http Status Code.
+    //  * - `message`: a short description of the HTTP error by default; override this
+    //  */
+    // async refreshToken(inputPayload: AuthRefreshToken): Promise<AuthSuccessReturn> {
+    //     const checkToken = await this.checkToken(inputPayload.access_token)
+    //     if (checkToken) {
+    //         return this.createTokenAndThrowException(checkToken.id, checkToken.username, checkToken.name, HttpStatus.OK, checkToken.token)
+    //     } else throw new HttpException("Token Error", HttpStatus.BAD_REQUEST)
+    // }
 
-    /**
-     * Làm mới token, token cũ không còn sử dụng được.
-     * 
-     * @param {AuthRefreshToken} inputPayload  - Giá trị nhận từ client là 1 `JSON` chứa 1 phần tử :
-     * - `access_token`: token đăng nhập.
-     * 
-     * @returns {Promise<AuthSuccessReturn>} Trả về `AuthSuccessReturn` hoặc throw `HttpException`
-     * 
-     * `AuthSuccessReturn` By default, the `JSON` response body contains four properties:
-     * - `statusCode`: the Http Status Code.
-     * - `message`: a short description of the request.
-     * - `username`: username của người dùng.
-     * - `access_token`: token sử dụng để đăng nhập thay tài khoản và mật khẩu.
-     * 
-     * `HttpException` By default, the `JSON` response body contains two properties:
-     * - `statusCode`: the Http Status Code.
-     * - `message`: a short description of the HTTP error by default; override this
-     */
-    async renewToken(inputPayload: AuthRefreshToken): Promise<AuthSuccessReturn> {
-        const checkToken = await this.checkToken(inputPayload.access_token)
-        if (checkToken) {
-            return this.createTokenAndThrowException(checkToken.id, checkToken.username, checkToken.name, HttpStatus.OK)
-        } else throw new HttpException("Token Error", HttpStatus.BAD_REQUEST)
-    }
+    // /**
+    //  * Làm mới token, token cũ không còn sử dụng được.
+    //  * 
+    //  * @param {AuthRefreshToken} inputPayload  - Giá trị nhận từ client là 1 `JSON` chứa 1 phần tử :
+    //  * - `access_token`: token đăng nhập.
+    //  * 
+    //  * @returns {Promise<AuthSuccessReturn>} Trả về `AuthSuccessReturn` hoặc throw `HttpException`
+    //  * 
+    //  * `AuthSuccessReturn` By default, the `JSON` response body contains four properties:
+    //  * - `statusCode`: the Http Status Code.
+    //  * - `message`: a short description of the request.
+    //  * - `username`: username của người dùng.
+    //  * - `access_token`: token sử dụng để đăng nhập thay tài khoản và mật khẩu.
+    //  * 
+    //  * `HttpException` By default, the `JSON` response body contains two properties:
+    //  * - `statusCode`: the Http Status Code.
+    //  * - `message`: a short description of the HTTP error by default; override this
+    //  */
+    // async renewToken(inputPayload: AuthRefreshToken): Promise<AuthSuccessReturn> {
+    //     const checkToken = await this.checkToken(inputPayload.access_token)
+    //     if (checkToken) {
+    //         return this.createTokenAndThrowException(checkToken.id, checkToken.username, checkToken.name, HttpStatus.OK)
+    //     } else throw new HttpException("Token Error", HttpStatus.BAD_REQUEST)
+    // }
 
-    async testC(input: { access_token: string }) {
-        return this.checkToken(input.access_token)
-    }
+    // async testC(input: { access_token: string }) {
+    //     return this.checkToken(input.access_token)
+    // }
 
-    /**
-     * Check Token
-     * 
-     * @param access_token - token dùng để đăng nhập.
-     * 
-     * @returns {Promise<AuthCheckToken>} - Trả về `AuthCheckToken` hoặc throw `HttpException`.
-     * 
-     * `AuthCheckToken` : 1 `JSON` Chứa 3 phần tử:
-     * - `userId`: id user.
-     * - `username`: username người dùng.
-     * - `token`: token để tạo access_token.
-     * 
-     */
+    // /**
+    //  * Check Token
+    //  * 
+    //  * @param access_token - token dùng để đăng nhập.
+    //  * 
+    //  * @returns {Promise<AuthCheckToken>} - Trả về `AuthCheckToken` hoặc throw `HttpException`.
+    //  * 
+    //  * `AuthCheckToken` : 1 `JSON` Chứa 3 phần tử:
+    //  * - `userId`: id user.
+    //  * - `username`: username người dùng.
+    //  * - `token`: token để tạo access_token.
+    //  * 
+    //  */
 
-    async checkToken(access_token: string): Promise<AuthCheckToken> {
+    // async checkToken(access_token: string): Promise<AuthCheckToken> {
 
-        const tokenPayload = this.jwt.decode(access_token)
+    //     const tokenPayload = this.jwt.decode(access_token)
 
-        const username = tokenPayload['username']
-        const userId = tokenPayload['id']
-        const name = tokenPayload['name']
+    //     const username = tokenPayload['username']
+    //     const userId = tokenPayload['id']
+    //     const name = tokenPayload['name']
 
 
-        if (userId && username && name) {
-            const user = await this.prisma.user.findUnique({
-                where: {
-                    username: username
-                },
-                select: {
-                    id: true,
-                    token: true,
-                    username: true,
-                    name: true
-                }
-            }).catch(_ => {
-                throw new HttpException("Token Error", HttpStatus.BAD_REQUEST)
-            })
-            if (userId == user.id) {
-                const secret = this.config.get("JWT_SECRET") + user.token;
-                const checkTokenPayload = await this.jwt.verifyAsync(access_token, { secret }).then(_ => {
-                    return {
-                        id: user.id,
-                        username: user.username,
-                        token: user.token,
-                        name: user.name
-                    }
-                }).catch(_ => {
-                    throw new HttpException("Token Error", HttpStatus.BAD_REQUEST)
-                })
-                return checkTokenPayload
-            }
-        }
-        throw new HttpException("Token Error", HttpStatus.BAD_REQUEST)
-    }
+    //     if (userId && username && name) {
+    //         const user = await this.prisma.user.findUnique({
+    //             where: {
+    //                 username: username
+    //             },
+    //             select: {
+    //                 id: true,
+    //                 token: true,
+    //                 username: true,
+    //                 name: true
+    //             }
+    //         }).catch(_ => {
+    //             throw new HttpException("Token Error", HttpStatus.BAD_REQUEST)
+    //         })
+    //         if (userId == user.id) {
+    //             const secret = this.config.get("JWT_SECRET") + user.token;
+    //             const checkTokenPayload = await this.jwt.verifyAsync(access_token, { secret }).then(_ => {
+    //                 return {
+    //                     id: user.id,
+    //                     username: user.username,
+    //                     token: user.token,
+    //                     name: user.name
+    //                 }
+    //             }).catch(_ => {
+    //                 throw new HttpException("Token Error", HttpStatus.BAD_REQUEST)
+    //             })
+    //             return checkTokenPayload
+    //         }
+    //     }
+    //     throw new HttpException("Token Error", HttpStatus.BAD_REQUEST)
+    // }
+
     /**
      * Xử lý tạo token 
      * 
      * 
-     * @param {number} id - ID của user.
-     * @param {string} username - Username của user.
-     * @param {number} HttpStatusCode - Status code trả về.
-     * @param {string} current_token - token dùng để tạo access_token, default `none`.
+     * @param {UserPayload} user - ID của user.
+     * @param {number} successStatusCode - Status code trả về.
      * 
      * @returns {Promise<AuthSuccessReturn>} Trả về `AuthSuccessReturn` hoặc throw `HttpException`.
      * 
@@ -282,11 +295,11 @@ export class AuthService {
      * - `statusCode`: the Http Status Code.
      * - `message`: a short description of the HTTP error by default; override this
      */
-    private async createTokenAndThrowException(id: number, username: string, name: string, HttpStatusCode: number, current_token?: string): Promise<AuthSuccessReturn> {
+    private async createTokenAndThrowException(user: UserPayload, successStatusCode: number): Promise<AuthSuccessReturn> {
         const payload: AuthTokenPayload = {
-            id: id,
-            username: username,
-            name: name
+            id: user.id,
+            username: user.username,
+            name: user.name,
         }
 
         // const token = current_token||crypto.randomUUID()
@@ -299,20 +312,15 @@ export class AuthService {
         });
         if (access_token) {
             try {
-                // await this.prisma.user.update({
-                //     where: {
-                //         id: userId
-                //     },
-                //     data: {
-                //         token: token
-                //     }
-                // });
                 return {
-                    statusCode: HttpStatusCode,
+                    statusCode: successStatusCode,
                     message: "Authentication accepted",
-                    username: username,
-                    id: id,
-                    name: name,
+                    user: {
+                        id: user.id,
+                        username: user.username,
+                        name: user.name,
+                        avatar: user.avatar || null
+                    },
                     access_token: access_token,
                 }
             } catch (error) {
@@ -353,6 +361,9 @@ export class AuthService {
                     },
                     include: {
                         messages: true,
+                        calls: true,
+                        image: true,
+                        sticker: true,
                         userReceive: {
                             select: {
                                 id: true,
@@ -383,18 +394,23 @@ export class AuthService {
                     },
                     include: {
                         messages: true,
+                        calls: true,
+                        image: true,
+                        sticker: true,
                         userReceive: {
                             select: {
                                 id: true,
                                 username: true,
-                                name: true
+                                name: true,
+                                avatar: true
                             }
                         },
                         userSend: {
                             select: {
                                 id: true,
                                 username: true,
-                                name: true
+                                name: true,
+                                avatar: true
                             }
                         }
                     }
@@ -407,7 +423,6 @@ export class AuthService {
             if (user.chatSend[0] && user.chatReceive[0]) {
                 user['chat'] = user.chatSend[0].createdAt >= user.chatReceive[0].createdAt ? user.chatSend : user.chatReceive
             }
-
             if (!user.chatReceive[0]) {
                 if (user.chatSend[0]) {
                     user['chat'] = user.chatSend
@@ -415,8 +430,6 @@ export class AuthService {
             } else if (!user.chatSend[0]) {
                 user['chat'] = user.chatReceive
             }
-
-
             delete user.chatReceive
             delete user.chatSend
         })

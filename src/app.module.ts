@@ -11,6 +11,9 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 // import { UserModule } from './user/user.module';
+import { PeerModule } from './peer/peer.module';
+import { Services } from './utils/constants';
+import { PeerSessionManager } from './peer/peer.session';
 
 @Module({
   imports: [
@@ -22,12 +25,20 @@ import { AppService } from './app.service';
     AuthModule,
     ChatModule,
     GatewayModule,
+    PeerModule,
+
     // FriendsModule,
     // FriendRequestModule,
     // GroupModule,
     // UserModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    // {
+		// 	provide: Services.PEER_SESSION_MANAGER,
+		// 	useClass: PeerSessionManager,
+		// },
+    AppService
+  ],
 })
 export class AppModule { }

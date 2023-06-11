@@ -16,6 +16,7 @@ export enum Chat {
 }
 export enum Services {
     GATEWAY_SESSION_MANAGER = 'GATEWAY_SESSION_MANAGER',
+    PEER_SESSION_MANAGER = 'PEER_SESSION_MANAGER',
   }
 
 
@@ -33,4 +34,11 @@ export enum Services {
 }
 export enum Secret {
     JWT_SECRET = 'JWT_SECRET'
+}
+export enum PORT {
+    BASE = "PORT",
+    PEER = "PEER_PORT"
+}
+export enum PEER{
+    PATH = "/"
 }

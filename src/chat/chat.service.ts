@@ -1,7 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { Chat } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { GetChatDto, IChatReturn } from './dto';
+import { IChatReturn } from './dto';
 
 @Injectable()
 export class ChatService {
@@ -31,6 +31,9 @@ export class ChatService {
                 },
                 include:{
                     messages:true,
+                    calls:true,
+                    image:true,
+                    sticker:true,
                     userReceive: {
                         select:{
                             id:true,
@@ -55,7 +58,7 @@ export class ChatService {
             }
             return {statusCode: 200, chat: chats}
         } catch (error) {
-            return {statusCode: 400, message:"Error for load message"}
+            throw new HttpException('Unable to load message', HttpStatus.BAD_REQUEST);
         }
     } 
 }

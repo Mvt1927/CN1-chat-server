@@ -28,6 +28,10 @@ export class socketSendMessagePayload {
 
   url?: string;
 
-
-
+}
+export class socketCallRequest {
+  @IsNotEmpty()
+  @IsNumber()
+  chatId: number;
+  peerId?: string;
 }
